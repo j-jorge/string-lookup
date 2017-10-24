@@ -1,2 +1,11 @@
+FLAGS=-DNDEBUG -O3
+
+INCLUDES=-I./include \
+	-I./marisa-trie/include \
+	-I./marisa-trie/lib/
+
+SOURCES=`find src -name "*.cpp"` \
+	`find marisa-trie/lib/ -name "*.cc"`
+
 all:
-	g++ -DNDEBUG -O3 -I./include `find src -name "*.cpp"` -o bench
+	g++ $(FLAGS) $(INCLUDES) $(SOURCES) -o bench

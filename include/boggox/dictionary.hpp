@@ -23,7 +23,7 @@ namespace boggox
     const dictionary* suffixes( char key ) const;
 
   private:
-    std::array<dictionary, 'z' - 'a' + 1>* m_next;
+    std::array<dictionary, 'Z' - 'A' + 1>* m_next;
     bool m_terminal;
   };
   
