@@ -1,4 +1,5 @@
 FLAGS=-DNDEBUG -O3
+#FLAGS=-D_DEBUG -g
 
 INCLUDES=-I./include \
 	-I./marisa-trie/include \

@@ -19,4 +19,7 @@ struct trie
 void insert( trie& t, const std::string& word );
 bool find( const trie& t, const std::string& word );
 
+void flatify( std::vector< std::uint8_t >& nodes, const trie& t );
+bool find( const std::vector< std::uint8_t >& nodes, const std::string& word );
+
 void test_trie();

@@ -2,6 +2,7 @@
 #include "marisa/trie.h"
 #include "trie.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -13,6 +14,27 @@ std::chrono::nanoseconds now()
   return
     std::chrono::duration_cast< std::chrono::nanoseconds >
     ( std::chrono::steady_clock::now().time_since_epoch() );
+}
+
+void bench_binary_search( const std::vector< std::string >& words )
+{
+  std::vector< std::string > sorted( words );
+  std::sort( sorted.begin(), sorted.end() );
+
+  const auto begin( sorted.begin() );
+  const auto end( sorted.end() );
+  
+  std::chrono::nanoseconds duration( 0 );
+
+  for ( std::size_t i( 0 ); i != g_runs; ++i )
+    for ( const std::string& w : words )
+      {
+        const std::chrono::nanoseconds start( now() );
+        std::binary_search( begin, end, w );
+        duration += now() - start;
+      }
+
+  std::cout << "List:\t" << duration.count() << '\n';
 }
 
 bool contains
@@ -119,6 +141,38 @@ void bench_trie( const std::vector< std::string >& words )
   bench( t, words );
 }
 
+void bench
+( const std::vector< std::uint8_t >& dictionary,
+  const std::vector< std::string >& words )
+{
+  std::chrono::nanoseconds duration( 0 );
+
+  for ( std::size_t i( 0 ); i != g_runs; ++i )
+    for ( const std::string& w : words )
+      {
+        const std::chrono::nanoseconds start( now() );
+
+        find( dictionary, w );
+        
+        duration += now() - start;
+      }
+
+  std::cout << "Static:\t" << duration.count() << '\n';
+}
+
+void bench_static_trie( const std::vector< std::string >& words )
+{
+  trie t;
+
+  for ( const std::string& w : words )
+    insert( t, w );
+
+  std::vector< std::uint8_t > nodes;
+  flatify( nodes, t );
+
+  bench( nodes, words );
+}
+
 int main( int argc, char* argv[])
 {
   test_trie();
@@ -136,9 +190,11 @@ int main( int argc, char* argv[])
   while ( f >> s )
     words.push_back( s );
 
+  bench_binary_search( words );
   bench_boggox( words );
   bench_marisa( words );
   bench_trie( words );
+  bench_static_trie( words );
   
   return 0;
 }
