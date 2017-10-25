@@ -1,11 +1,13 @@
 #include "boggox/dictionary.hpp"
 #include "marisa/trie.h"
 #include "trie.hpp"
+#include "word_encoding.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <unordered_set>
 
 static constexpr std::size_t g_runs( 1000 );
 
@@ -31,7 +33,7 @@ void bench_forward
         duration += now() - start;
       }
 
-  std::cout << tag << " (forward):\t" << duration.count() << '\n';
+  std::cout << tag << " (forward):\t" << duration.count() << std::endl;
 }
 
 template< typename F >
@@ -50,7 +52,7 @@ void bench_reverse
         duration += now() - start;
       }
 
-  std::cout << tag << " (reverse):\t" << duration.count() << '\n';
+  std::cout << tag << " (reverse):\t" << duration.count() << std::endl;
 }
 
 template< typename F >
@@ -74,6 +76,55 @@ void bench_binary_search( const std::vector< std::string >& words )
     ( words, "List", [ & ]( const std::string& w ) -> bool
       {
         return std::binary_search( begin, end, w );
+      } );
+}
+
+void bench_encoded( const std::vector< std::string >& words )
+{
+  const std::size_t count( words.size() );
+  std::vector< std::uint64_t > sorted( count );
+
+  for ( std::size_t i( 0 ); i != count; ++i )
+    sorted[ i ] = encode_word( words[ i ] );
+  
+  std::sort( sorted.begin(), sorted.end() );
+
+  const auto begin( sorted.begin() );
+  const auto end( sorted.end() );
+
+  bench
+    ( words, "Uint", [ & ]( const std::string& w ) -> bool
+      {
+        return std::binary_search( begin, end, encode_word( w ) );
+      } );
+}
+
+void bench_hash_set_code( const std::vector< std::string >& words )
+{
+  std::unordered_set< std::uint64_t > set;
+
+  for ( const std::string& w : words )
+    set.insert( encode_word( w ) );
+  
+  const auto end( set.end() );
+
+  bench
+    ( words, "set<code>", [ & ]( const std::string& w ) -> bool
+      {
+        return set.find( encode_word( w ) ) != end;
+      } );
+}
+
+void bench_hash_set( const std::vector< std::string >& words )
+{
+  std::unordered_set< std::string > set( words.begin(), words.end() );
+
+  const auto end( set.end() );
+  
+  bench
+    ( words, "set<string>", [ & ]( const std::string& w ) -> bool
+      {
+        return set.find( w ) != end;
       } );
 }
 
@@ -200,6 +251,9 @@ int main( int argc, char* argv[])
   while ( f >> s )
     words.push_back( s );
 
+  bench_hash_set( words );
+  bench_hash_set_code( words );
+  bench_encoded( words );
   bench_binary_search( words );
   bench_boggox( words );
   bench_marisa( words );
