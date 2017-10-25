@@ -16,6 +16,52 @@ std::chrono::nanoseconds now()
     ( std::chrono::steady_clock::now().time_since_epoch() );
 }
 
+template< typename F >
+void bench_forward
+( const std::vector< std::string >& words, const std::string& tag,
+  F&& f )
+{
+  std::chrono::nanoseconds duration( 0 );
+
+  for ( std::size_t i( 0 ); i != g_runs; ++i )
+    for ( const std::string& w : words )
+      {
+        const std::chrono::nanoseconds start( now() );
+        f( w );
+        duration += now() - start;
+      }
+
+  std::cout << tag << " (forward):\t" << duration.count() << '\n';
+}
+
+template< typename F >
+void bench_reverse
+( const std::vector< std::string >& words, const std::string& tag,
+  F&& f )
+{
+  std::chrono::nanoseconds duration( 0 );
+
+  for ( std::size_t i( 0 ); i != g_runs; ++i )
+    for ( const std::string& w : words )
+      {
+        const std::string needle( w.rbegin(), w.rend() );
+        const std::chrono::nanoseconds start( now() );
+        f( needle );
+        duration += now() - start;
+      }
+
+  std::cout << tag << " (reverse):\t" << duration.count() << '\n';
+}
+
+template< typename F >
+void bench
+( const std::vector< std::string >& words, const std::string& tag,
+  F&& f )
+{
+  bench_forward( words, tag, f );
+  bench_reverse( words, tag, f );
+}
+
 void bench_binary_search( const std::vector< std::string >& words )
 {
   std::vector< std::string > sorted( words );
@@ -23,18 +69,12 @@ void bench_binary_search( const std::vector< std::string >& words )
 
   const auto begin( sorted.begin() );
   const auto end( sorted.end() );
-  
-  std::chrono::nanoseconds duration( 0 );
 
-  for ( std::size_t i( 0 ); i != g_runs; ++i )
-    for ( const std::string& w : words )
+  bench
+    ( words, "List", [ & ]( const std::string& w ) -> bool
       {
-        const std::chrono::nanoseconds start( now() );
-        std::binary_search( begin, end, w );
-        duration += now() - start;
-      }
-
-  std::cout << "List:\t" << duration.count() << '\n';
+        return std::binary_search( begin, end, w );
+      } );
 }
 
 bool contains
@@ -49,24 +89,18 @@ bool contains
     else
       d = d->suffixes( *it );
 
-  return d->terminal();
+  return ( d != nullptr ) && d->terminal();
 }
 
 void bench
 ( const boggox::dictionary& dictionary,
   const std::vector< std::string >& words )
 {
-  std::chrono::nanoseconds duration( 0 );
-
-  for ( std::size_t i( 0 ); i != g_runs; ++i )
-    for ( const std::string& w : words )
+  bench
+    ( words, "Boggox", [ & ]( const std::string& w ) -> bool
       {
-        const std::chrono::nanoseconds start( now() );
-        contains( dictionary, w );
-        duration += now() - start;
-      }
-
-  std::cout << "Boggox:\t" << duration.count() << '\n';
+        return contains( dictionary, w );
+      } );
 }
 
 void bench_boggox( const std::vector< std::string >& words )
@@ -81,22 +115,14 @@ void bench
 ( const marisa::Trie& dictionary,
   const std::vector< std::string >& words )
 {
-  std::chrono::nanoseconds duration( 0 );
-
   marisa::Agent agent;
   
-  for ( std::size_t i( 0 ); i != g_runs; ++i )
-    for ( const std::string& w : words )
+  bench
+    ( words, "Marisa", [ & ]( const std::string& w ) -> bool
       {
-        const std::chrono::nanoseconds start( now() );
-
         agent.set_query( w.c_str() );
-        dictionary.lookup( agent );
-        
-        duration += now() - start;
-      }
-
-  std::cout << "Marisa:\t" << duration.count() << '\n';
+        return dictionary.lookup( agent );
+      } );
 }
 
 void bench_marisa( const std::vector< std::string >& words )
@@ -116,19 +142,11 @@ void bench
 ( const trie& dictionary,
   const std::vector< std::string >& words )
 {
-  std::chrono::nanoseconds duration( 0 );
-
-  for ( std::size_t i( 0 ); i != g_runs; ++i )
-    for ( const std::string& w : words )
+  bench
+    ( words, "Trie", [ & ]( const std::string& w ) -> bool
       {
-        const std::chrono::nanoseconds start( now() );
-
-        find( dictionary, w );
-        
-        duration += now() - start;
-      }
-
-  std::cout << "Trie:\t" << duration.count() << '\n';
+        return find( dictionary, w );
+      } );
 }
 
 void bench_trie( const std::vector< std::string >& words )
@@ -145,19 +163,11 @@ void bench
 ( const std::vector< std::uint8_t >& dictionary,
   const std::vector< std::string >& words )
 {
-  std::chrono::nanoseconds duration( 0 );
-
-  for ( std::size_t i( 0 ); i != g_runs; ++i )
-    for ( const std::string& w : words )
+  bench
+    ( words, "Static", [ & ]( const std::string& w ) -> bool
       {
-        const std::chrono::nanoseconds start( now() );
-
-        find( dictionary, w );
-        
-        duration += now() - start;
-      }
-
-  std::cout << "Static:\t" << duration.count() << '\n';
+        return find( dictionary, w );
+      } );
 }
 
 void bench_static_trie( const std::vector< std::string >& words )
