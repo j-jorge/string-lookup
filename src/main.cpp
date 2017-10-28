@@ -231,6 +231,8 @@ void bench_static_trie( const std::vector< std::string >& words )
   std::vector< std::uint8_t > nodes;
   flatify( nodes, t );
 
+  std::cout << "Flat trie's size: " << nodes.size() << '\n';
+  
   bench( nodes, words );
 }
 

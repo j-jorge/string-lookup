@@ -1,5 +1,6 @@
 FLAGS=-DNDEBUG -O3
 #FLAGS=-D_DEBUG -g
+CXX=g++
 
 INCLUDES=-I./include \
 	-I./marisa-trie/include \
@@ -9,4 +10,4 @@ SOURCES=`find src -name "*.cpp"` \
 	`find marisa-trie/lib/ -name "*.cc"`
 
 all:
-	g++ $(FLAGS) $(INCLUDES) $(SOURCES) -o bench
+	$(CXX) -std=c++11 $(FLAGS) $(INCLUDES) $(SOURCES) -o bench
