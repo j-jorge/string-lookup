@@ -19,7 +19,7 @@ std::chrono::nanoseconds now()
 }
 
 template< typename F >
-void bench_forward
+std::size_t bench_forward
 ( const std::vector< std::string >& words, const std::string& tag,
   F&& f )
 {
@@ -33,11 +33,11 @@ void bench_forward
         duration += now() - start;
       }
 
-  std::cout << tag << " (forward):\t" << duration.count() << std::endl;
+  return duration.count();
 }
 
 template< typename F >
-void bench_reverse
+std::size_t bench_reverse
 ( const std::vector< std::string >& words, const std::string& tag,
   F&& f )
 {
@@ -52,19 +52,30 @@ void bench_reverse
         duration += now() - start;
       }
 
-  std::cout << tag << " (reverse):\t" << duration.count() << std::endl;
+  return duration.count();
 }
 
+struct bench_result
+{
+  std::string name;
+  std::size_t forward;
+  std::size_t reverse;
+};
+
 template< typename F >
-void bench
+bench_result bench
 ( const std::vector< std::string >& words, const std::string& tag,
   F&& f )
 {
-  bench_forward( words, tag, f );
-  bench_reverse( words, tag, f );
+  return bench_result
+    {
+      tag,
+      bench_forward( words, tag, f ),
+      bench_reverse( words, tag, f ),
+    };
 }
 
-void bench_binary_search( const std::vector< std::string >& words )
+bench_result bench_binary_search( const std::vector< std::string >& words )
 {
   std::vector< std::string > sorted( words );
   std::sort( sorted.begin(), sorted.end() );
@@ -72,14 +83,14 @@ void bench_binary_search( const std::vector< std::string >& words )
   const auto begin( sorted.begin() );
   const auto end( sorted.end() );
 
-  bench
-    ( words, "List", [ & ]( const std::string& w ) -> bool
+  return bench
+    ( words, "bsearch-vector", [ & ]( const std::string& w ) -> bool
       {
         return std::binary_search( begin, end, w );
       } );
 }
 
-void bench_encoded( const std::vector< std::string >& words )
+bench_result bench_encoded( const std::vector< std::string >& words )
 {
   const std::size_t count( words.size() );
   std::vector< std::uint64_t > sorted( count );
@@ -92,14 +103,14 @@ void bench_encoded( const std::vector< std::string >& words )
   const auto begin( sorted.begin() );
   const auto end( sorted.end() );
 
-  bench
-    ( words, "Uint", [ & ]( const std::string& w ) -> bool
+  return bench
+    ( words, "uint-code", [ & ]( const std::string& w ) -> bool
       {
         return std::binary_search( begin, end, encode_word( w ) );
       } );
 }
 
-void bench_hash_set_code( const std::vector< std::string >& words )
+bench_result bench_hash_set_code( const std::vector< std::string >& words )
 {
   std::unordered_set< std::uint64_t > set;
 
@@ -108,21 +119,46 @@ void bench_hash_set_code( const std::vector< std::string >& words )
   
   const auto end( set.end() );
 
-  bench
-    ( words, "set<code>", [ & ]( const std::string& w ) -> bool
+  return bench
+    ( words, "unordered_set<code>", [ & ]( const std::string& w ) -> bool
       {
         return set.find( encode_word( w ) ) != end;
       } );
 }
 
-void bench_hash_set( const std::vector< std::string >& words )
+bench_result
+bench_hash_set_code_direct( const std::vector< std::string >& words )
+{
+  struct hash
+  {
+    std::size_t operator()( std::uint64_t value ) const
+    {
+      return value;
+    }
+  };
+    
+  std::unordered_set< std::uint64_t, hash > set;
+
+  for ( const std::string& w : words )
+    set.insert( encode_word( w ) );
+  
+  const auto end( set.end() );
+
+  return bench
+    ( words, "unordered_set<code, hash>", [ & ]( const std::string& w ) -> bool
+      {
+        return set.find( encode_word( w ) ) != end;
+      } );
+}
+
+bench_result bench_hash_set( const std::vector< std::string >& words )
 {
   std::unordered_set< std::string > set( words.begin(), words.end() );
 
   const auto end( set.end() );
   
-  bench
-    ( words, "set<string>", [ & ]( const std::string& w ) -> bool
+  return bench
+    ( words, "unordered_set<string>", [ & ]( const std::string& w ) -> bool
       {
         return set.find( w ) != end;
       } );
@@ -143,40 +179,40 @@ bool contains
   return ( d != nullptr ) && d->terminal();
 }
 
-void bench
+bench_result bench
 ( const boggox::dictionary& dictionary,
   const std::vector< std::string >& words )
 {
-  bench
-    ( words, "Boggox", [ & ]( const std::string& w ) -> bool
+  return bench
+    ( words, "array-trie", [ & ]( const std::string& w ) -> bool
       {
         return contains( dictionary, w );
       } );
 }
 
-void bench_boggox( const std::vector< std::string >& words )
+bench_result bench_boggox( const std::vector< std::string >& words )
 {
   boggox::dictionary dictionary;
   boggox::populate_dictionary( dictionary, words );
 
-  bench( dictionary, words );
+  return bench( dictionary, words );
 }
 
-void bench
+bench_result bench
 ( const marisa::Trie& dictionary,
   const std::vector< std::string >& words )
 {
   marisa::Agent agent;
   
-  bench
-    ( words, "Marisa", [ & ]( const std::string& w ) -> bool
+  return bench
+    ( words, "marisa", [ & ]( const std::string& w ) -> bool
       {
         agent.set_query( w.c_str() );
         return dictionary.lookup( agent );
       } );
 }
 
-void bench_marisa( const std::vector< std::string >& words )
+bench_result bench_marisa( const std::vector< std::string >& words )
 {
   marisa::Keyset keys;
 
@@ -186,42 +222,42 @@ void bench_marisa( const std::vector< std::string >& words )
   marisa::Trie trie;
   trie.build( keys );
 
-  bench( trie, words );
+  return bench( trie, words );
 }
 
-void bench
+bench_result bench
 ( const trie& dictionary,
   const std::vector< std::string >& words )
 {
-  bench
-    ( words, "Trie", [ & ]( const std::string& w ) -> bool
+  return bench
+    ( words, "dynamic-trie", [ & ]( const std::string& w ) -> bool
       {
         return find( dictionary, w );
       } );
 }
 
-void bench_trie( const std::vector< std::string >& words )
+bench_result bench_trie( const std::vector< std::string >& words )
 {
   trie t;
 
   for ( const std::string& w : words )
     insert( t, w );
   
-  bench( t, words );
+  return bench( t, words );
 }
 
-void bench
+bench_result bench
 ( const std::vector< std::uint8_t >& dictionary,
   const std::vector< std::string >& words )
 {
-  bench
-    ( words, "Static", [ & ]( const std::string& w ) -> bool
+  return bench
+    ( words, "static-trie", [ & ]( const std::string& w ) -> bool
       {
         return find( dictionary, w );
       } );
 }
 
-void bench_static_trie( const std::vector< std::string >& words )
+bench_result bench_static_trie( const std::vector< std::string >& words )
 {
   trie t;
 
@@ -231,9 +267,38 @@ void bench_static_trie( const std::vector< std::string >& words )
   std::vector< std::uint8_t > nodes;
   flatify( nodes, t );
 
-  std::cout << "Flat trie's size: " << nodes.size() << '\n';
+  return bench( nodes, words );
+}
+
+void output_result
+( std::size_t size, const bench_result& base_line, const bench_result& result )
+{
+  std::cout << size << '\t' << (float)result.forward / base_line.forward
+            <<  '\t' << (float)result.reverse / base_line.reverse
+            << "\t# " << result.name << std::endl;
+}
+
+void bench_for_size
+( const std::vector< std::string >& all_words, std::size_t size )
+{
+  std::vector< std::string > words;
+  words.reserve( all_words.size() );
   
-  bench( nodes, words );
+  for ( const std::string& w : all_words )
+    if ( w.size() <= size )
+      words.push_back( w );
+
+  const bench_result base_line( bench_hash_set( words ) );
+
+  output_result( size, base_line, base_line );
+  output_result( size, base_line, bench_hash_set_code( words ) );
+  output_result( size, base_line, bench_hash_set_code_direct( words ) );
+  output_result( size, base_line, bench_encoded( words ) );
+  output_result( size, base_line, bench_binary_search( words ) );
+  output_result( size, base_line, bench_boggox( words ) );
+  output_result( size, base_line, bench_marisa( words ) );
+  output_result( size, base_line, bench_trie( words ) );
+  output_result( size, base_line, bench_static_trie( words ) );
 }
 
 int main( int argc, char* argv[])
@@ -253,14 +318,8 @@ int main( int argc, char* argv[])
   while ( f >> s )
     words.push_back( s );
 
-  bench_hash_set( words );
-  bench_hash_set_code( words );
-  bench_encoded( words );
-  bench_binary_search( words );
-  bench_boggox( words );
-  bench_marisa( words );
-  bench_trie( words );
-  bench_static_trie( words );
+  for ( std::size_t i( 3 ); i <= 10; ++i )
+    bench_for_size( words, i );
   
   return 0;
 }
