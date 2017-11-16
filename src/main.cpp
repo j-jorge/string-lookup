@@ -273,8 +273,8 @@ bench_result bench_static_trie( const std::vector< std::string >& words )
 void output_result
 ( std::size_t size, const bench_result& base_line, const bench_result& result )
 {
-  std::cout << size << '\t' << (float)result.forward / base_line.forward
-            <<  '\t' << (float)result.reverse / base_line.reverse
+  std::cout << size << '\t' << (float)base_line.forward / result.forward
+            <<  '\t' << (float)base_line.reverse / result.reverse
             << "\t# " << result.name << std::endl;
 }
 
