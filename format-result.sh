@@ -2,14 +2,29 @@
 
 set -e
 
-OUTPUT_DIR=output/$(basename $1 .txt)
+RUNS=1000
+
+while [ $# -gt 0 ]
+do
+    case "$1" in
+        --runs)
+            RUNS=$2
+            shift 2
+            ;;
+        *)
+            INPUT="$1"
+            shift
+    esac
+done
+
+OUTPUT_DIR=output/$(basename "$INPUT" .txt)
 
 [ -d "$OUTPUT_DIR" ] || mkdir -p "$OUTPUT_DIR"
 
 FILE=$(mktemp /tmp/tmp.XXXXXXXXXX)
 trap "rm -f $FILE" EXIT
 
-cat $1 > $FILE
+cat "$INPUT" > $FILE
 
 output_file_name()
 {
@@ -43,7 +58,7 @@ print_plot()
     printf 'set term png linewidth 2 size 2048,1536 font Arial 20
 set output "%s.png"
 set xlabel "Maximum word length"
-set ylabel "relative speed"
+set ylabel "Relative speed. Higher is better."
 set title "%s"
 set xrange [ 2 : 11 ]
 set key outside center bottom horizontal Left reverse\n' \
@@ -63,13 +78,16 @@ set key outside center bottom horizontal Left reverse\n' \
     printf "\n"
 }
 
-split_file $1
+split_file "$INPUT"
 
 (
-    print_plot $1 "benchmark-forward" \
-               "Valid string lookup (1000 runs, baseline=std::unorderd_set<std::string>)" \
+    print_plot "$INPUT" "benchmark-forward" \
+               "Valid string lookup ($RUNS runs, baseline=std::unorderd_set<std::string>)" \
                2
-    print_plot $1 "benchmark-reverse" \
-               "Invalid string lookup (1000 runs, baseline=std::unorderd_set<std::string>)" \
+    print_plot "$INPUT" "benchmark-reverse" \
+               "Invalid string lookup ($RUNS runs, baseline=std::unorderd_set<std::string>)" \
                3
 ) > $OUTPUT_DIR/bench.plot
+
+cd $OUTPUT_DIR/
+gnuplot bench.plot
