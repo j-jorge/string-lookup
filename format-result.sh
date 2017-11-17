@@ -57,10 +57,11 @@ print_plot()
     
     printf 'set term png linewidth 2 size 2048,1536 font Arial 20
 set output "%s.png"
-set xlabel "Maximum word length"
+set xlabel "Searched word length"
 set ylabel "Relative speed. Higher is better."
 set title "%s"
 set xrange [ 2 : 11 ]
+set yrange [ 0 : * ]
 set key outside center bottom horizontal Left reverse\n' \
            "$OUTPUT" "$TITLE"
     
@@ -82,10 +83,10 @@ split_file "$INPUT"
 
 (
     print_plot "$INPUT" "benchmark-forward" \
-               "Valid string lookup ($RUNS runs, baseline=std::unorderd_set<std::string>)" \
+               "Valid string lookup ($RUNS runs, baseline=bsearch-string)" \
                2
     print_plot "$INPUT" "benchmark-reverse" \
-               "Invalid string lookup ($RUNS runs, baseline=std::unorderd_set<std::string>)" \
+               "Invalid string lookup ($RUNS runs, baseline=bsearch-string)" \
                3
 ) > $OUTPUT_DIR/bench.plot
 
