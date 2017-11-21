@@ -55,8 +55,9 @@ print_plot()
     local TITLE="$3"
     local COLUMN=$4
     
-    printf 'set term png linewidth 2 size 2048,1536 font Arial 20
+    printf 'set term png linewidth 2 size 2048,1536 font Arial 40
 set output "%s.png"
+set border lw 3
 set xlabel "Searched word length"
 set ylabel "Relative speed. Higher is better."
 set title "%s"
@@ -70,7 +71,7 @@ set key outside center bottom horizontal Left reverse\n' \
     get_unique_names $FILE \
         | while read NAME
     do
-        printf '%s "%s" using 1:%s title "%s" with linespoints ps 2' \
+        printf '%s "%s" using 1:%s title "%s" with linespoints ps 2 lw 3' \
                "$LINE_BEGIN" "$(output_file_name $NAME)" "$COLUMN" "$NAME"
 
         LINE_BEGIN=','
